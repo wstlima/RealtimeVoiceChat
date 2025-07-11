@@ -9,6 +9,12 @@ https://github.com/user-attachments/assets/16cc29a7-bec2-4dd0-a056-d213db798d8f
 
 *(early preview - first reasonably stable version)*
 
+> ❗ **Project Status: Community-Driven**
+> 
+> This project is no longer being actively maintained by me due to time constraints. I've taken on too many projects and I have to step back. I will no longer be implementing new features or providing user support.
+>
+> I will continue to review and merge high-quality, well-written Pull Requests from the community from time to time. Your contributions are welcome and appreciated!
+
 ## What's Under the Hood?
 
 A sophisticated client-server system built for low-latency interaction:
