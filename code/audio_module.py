@@ -108,8 +108,9 @@ class AudioProcessor:
                 specific_model="Lasinya",
                 local_models_path="./models",
                 voice="reference_audio.wav",
+                language="pt",
                 speed=1.1,
-                use_deepspeed=True,
+                use_deepspeed=False,
                 thread_count=6,
                 stream_chunk_size=self.current_stream_chunk_size,
                 overlap_wav_len=1024,
@@ -120,7 +121,7 @@ class AudioProcessor:
             )
         elif engine == "kokoro":
             self.engine = KokoroEngine(
-                voice="af_heart",
+                voice="pt_BR-faber-medium",
                 default_speed=1.26,
                 trim_silence=True,
                 silence_threshold=0.01,

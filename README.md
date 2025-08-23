@@ -245,6 +245,19 @@ Want to tweak the AI's voice, brain, or how it listens? Modify the Python files 
 
 ---
 
+## Portuguese & CPU-only configuration
+
+This repository is pre-configured to run entirely in Portuguese without GPU acceleration:
+
+* `server.py` defines `LANGUAGE = "pt"` and starts the Kokoro TTS engine with the voice `pt_BR-faber-medium`.
+* `transcribe.py` uses Whisper's multilingual `small` model with `language="pt"`.
+* `system_prompt.txt` instructs the LLM to always respond in Portuguese.
+* GPU settings were removed from `docker-compose.yml` so containers run on CPU by default.
+* When installing dependencies manually, use the CPU builds of PyTorch:
+  ```bash
+  pip install torch torchaudio torchvision
+  ```
+
 ## Contributing 🤝
 
 Got ideas or found a bug? Contributions are welcome! Feel free to open issues or submit pull requests.
