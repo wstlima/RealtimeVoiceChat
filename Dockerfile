@@ -42,11 +42,6 @@ EOF
 
 ARG WHISPER_MODEL=small
 ENV WHISPER_MODEL=${WHISPER_MODEL}
-RUN echo "Preloading faster_whisper model: ${WHISPER_MODEL}" && \
-    python - <<'EOF'
-import os, faster_whisper
-faster_whisper.WhisperModel(os.getenv('WHISPER_MODEL'), device='cpu')
-EOF
 
 RUN echo "Preloading SentenceFinishedClassification model..." && \
     python - <<'EOF'
