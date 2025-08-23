@@ -723,10 +723,37 @@ class LLM:
                         ollama_api_url = f"{self.effective_ollama_url}/api/generate"
                         logger.info(f"🤖💬 [{req_id}] Sending Ollama request to {ollama_api_url} with payload:")
                         logger.info(f"{json.dumps(payload, indent=2)}")
-                        response = self.ollama_session.post(
-                            ollama_api_url, json=payload, stream=True, timeout=(10.0, 600.0)
-                        )
-                        response.raise_for_status()
+                        try:
+                            response = self.ollama_session.post(
+                                ollama_api_url, json=payload, stream=True, timeout=(10.0, 600.0)
+                            )
+                            response.raise_for_status()
+                        except requests.exceptions.HTTPError as e2:
+                            status2 = getattr(e2.response, "status_code", None)
+                            if status2 == 404:
+                                logger.warning(f"🤖⚠️ [{req_id}] /api/generate not found (404). Falling back to /generate.")
+                                prompt = "\n".join([m.get("content", "") for m in messages])
+                                payload = {
+                                    "model": self.model,
+                                    "prompt": prompt,
+                                    "stream": True,
+                                    "options": options
+                                }
+                                ollama_api_url = f"{self.effective_ollama_url}/generate"
+                                logger.info(f"🤖💬 [{req_id}] Sending Ollama request to {ollama_api_url} with payload:")
+                                logger.info(f"{json.dumps(payload, indent=2)}")
+                                try:
+                                    response = self.ollama_session.post(
+                                        ollama_api_url, json=payload, stream=True, timeout=(10.0, 600.0)
+                                    )
+                                    response.raise_for_status()
+                                except Exception as e3:
+                                    logger.error(f"🤖💥 [{req_id}] No known Ollama endpoints at {self.effective_ollama_url}.")
+                                    raise RuntimeError(
+                                        "No known Ollama endpoints found. Please update or reconfigure the server."
+                                    ) from e3
+                            else:
+                                raise
                     else:
                         raise
                 stream_object_to_register = response # The requests.Response object
