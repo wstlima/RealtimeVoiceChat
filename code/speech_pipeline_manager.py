@@ -126,6 +126,7 @@ class SpeechPipelineManager:
             llm_model: str = "hf.co/bartowski/huihui-ai_Mistral-Small-24B-Instruct-2501-abliterated-GGUF:Q4_K_M",
             no_think: bool = False,
             orpheus_model: str = "orpheus-3b-0.1-ft-Q8_0-GGUF/orpheus-3b-0.1-ft-q8_0.gguf",
+            abort_on_prewarm_fail: bool = False,
         ):
         """
         Initializes the SpeechPipelineManager.
@@ -140,12 +141,14 @@ class SpeechPipelineManager:
             llm_model: The specific LLM model identifier.
             no_think: If True, removes specific thinking tags from LLM output.
             orpheus_model: Path or identifier for the Orpheus TTS model, if used.
+            abort_on_prewarm_fail: If True, abort initialization when LLM prewarm fails.
         """
         self.tts_engine = tts_engine
         self.llm_provider = llm_provider
         self.llm_model = llm_model
         self.no_think = no_think
         self.orpheus_model = orpheus_model
+        self.abort_on_prewarm_fail = abort_on_prewarm_fail
 
         self.system_prompt = system_prompt
         if tts_engine == "orpheus":
@@ -162,22 +165,29 @@ class SpeechPipelineManager:
         self.generation_counter: int = 0
         self.abort_lock = threading.Lock()
         self.llm = LLM(
-            backend=self.llm_provider, # Or your backend
+            backend=self.llm_provider,  # Or your backend
             model=self.llm_model,
             system_prompt=self.system_prompt,
             no_think=no_think,
         )
-        self.llm.prewarm()
-        self.llm_inference_time = self.llm.measure_inference_time()
-        if self.llm_inference_time is None:
+        prewarm_ok = self.llm.prewarm()
+        if not prewarm_ok:
             logger.warning(
-                "🗣️🧠🕒 LLM inference time measurement failed; defaulting to 0.0ms."
+                "🗣️🧠⚠️ LLM prewarm failed; skipping inference time measurement.",
             )
             self.llm_inference_time = 0.0
-            raise RuntimeError("LLM inference time measurement failed")
-        if self.llm_inference_time is not None:
+            if self.abort_on_prewarm_fail:
+                raise RuntimeError("LLM prewarm failed")
+        else:
+            self.llm_inference_time = self.llm.measure_inference_time()
+            if self.llm_inference_time is None:
+                logger.warning(
+                    "🗣️🧠🕒 LLM inference time measurement failed; defaulting to 0.0ms.",
+                )
+                self.llm_inference_time = 0.0
+                raise RuntimeError("LLM inference time measurement failed")
             logger.debug(
-                f"🗣️🧠🕒 LLM inference time: {self.llm_inference_time:.2f}ms"
+                f"🗣️🧠🕒 LLM inference time: {self.llm_inference_time:.2f}ms",
             )
 
         # --- State ---
