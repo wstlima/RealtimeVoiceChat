@@ -31,8 +31,8 @@ USE_SSL = False
 TTS_START_ENGINE = "kokoro"
 TTS_ORPHEUS_MODEL = "orpheus-3b-0.1-ft-Q8_0-GGUF/orpheus-3b-0.1-ft-q8_0.gguf"
 
-LLM_START_PROVIDER = "openai"
-LLM_START_MODEL = "gpt-4o-mini"
+LLM_START_PROVIDER = "ollama"
+LLM_START_MODEL = "phi3-mini-4k-instruct-q4_k_m"
 NO_THINK = False
 DIRECT_STREAM = TTS_START_ENGINE=="orpheus"
 
