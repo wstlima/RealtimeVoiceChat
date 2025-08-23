@@ -249,7 +249,7 @@ Want to tweak the AI's voice, brain, or how it listens? Modify the Python files 
 
 This repository is pre-configured to run entirely in Portuguese without GPU acceleration:
 
-* `server.py` defines `LANGUAGE = "pt"` and starts the Kokoro TTS engine with the voice `pt_BR-faber-medium`.
+* `server.py` defines `LANGUAGE = "pt"` and starts the Kokoro TTS engine with the voice `pf_dora`.
 * `transcribe.py` uses Whisper's multilingual `small` model with `language="pt"`.
 * `system_prompt.txt` instructs the LLM to always respond in Portuguese.
 * GPU settings were removed from `docker-compose.yml` so containers run on CPU by default.

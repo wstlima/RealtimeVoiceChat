@@ -121,7 +121,7 @@ class AudioProcessor:
             )
         elif engine == "kokoro":
             self.engine = KokoroEngine(
-                voice="pt_BR-faber-medium",
+                voice="pf_dora",
                 default_speed=1.26,
                 trim_silence=True,
                 silence_threshold=0.01,
