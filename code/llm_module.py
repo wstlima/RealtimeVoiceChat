@@ -704,10 +704,31 @@ class LLM:
                 logger.info(f"🤖💬 [{req_id}] Sending Ollama request to {ollama_api_url} with payload:")
                 logger.info(f"{json.dumps(payload, indent=2)}")
                 # Increase read timeout significantly for generation
-                response = self.ollama_session.post(
-                    ollama_api_url, json=payload, stream=True, timeout=(10.0, 600.0) # (connect_timeout, read_timeout)
-                )
-                response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+                try:
+                    response = self.ollama_session.post(
+                        ollama_api_url, json=payload, stream=True, timeout=(10.0, 600.0) # (connect_timeout, read_timeout)
+                    )
+                    response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+                except requests.exceptions.HTTPError as e:
+                    status = getattr(e.response, "status_code", None)
+                    if status == 404:
+                        logger.warning(f"🤖⚠️ [{req_id}] /api/chat not found (404). Falling back to /api/generate.")
+                        prompt = "\n".join([m.get("content", "") for m in messages])
+                        payload = {
+                            "model": self.model,
+                            "prompt": prompt,
+                            "stream": True,
+                            "options": options
+                        }
+                        ollama_api_url = f"{self.effective_ollama_url}/api/generate"
+                        logger.info(f"🤖💬 [{req_id}] Sending Ollama request to {ollama_api_url} with payload:")
+                        logger.info(f"{json.dumps(payload, indent=2)}")
+                        response = self.ollama_session.post(
+                            ollama_api_url, json=payload, stream=True, timeout=(10.0, 600.0)
+                        )
+                        response.raise_for_status()
+                    else:
+                        raise
                 stream_object_to_register = response # The requests.Response object
                 self._register_request(req_id, "ollama", stream_object_to_register)
                 yield from self._yield_ollama_chunks(response, req_id)
@@ -867,6 +888,8 @@ class LLM:
                                 logger.error(f"🤖💥 Ollama stream returned error for {request_id}: {chunk['error']}")
                                 raise RuntimeError(f"Ollama stream error: {chunk['error']}")
                             content = chunk.get('message', {}).get('content')
+                            if not content:
+                                content = chunk.get('response')
                             if content:
                                 token_count += 1
                                 yield content
