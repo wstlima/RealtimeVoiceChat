@@ -185,7 +185,6 @@ class SpeechPipelineManager:
                     "🗣️🧠🕒 LLM inference time measurement failed; defaulting to 0.0ms.",
                 )
                 self.llm_inference_time = 0.0
-                raise RuntimeError("LLM inference time measurement failed")
             logger.debug(
                 f"🗣️🧠🕒 LLM inference time: {self.llm_inference_time:.2f}ms",
             )
@@ -230,8 +229,13 @@ class SpeechPipelineManager:
 
         self.on_partial_assistant_text: Optional[Callable[[str], None]] = None
 
-        self.full_output_pipeline_latency = self.llm_inference_time + self.audio.tts_inference_time
-        logger.info(f"🗣️⏱️ Full output pipeline latency: {self.full_output_pipeline_latency:.2f}ms (LLM: {self.llm_inference_time:.2f}ms, TTS: {self.audio.tts_inference_time:.2f}ms)")
+        self.full_output_pipeline_latency = (self.llm_inference_time or 0.0) + (
+            self.audio.tts_inference_time or 0.0
+        )
+        logger.info(
+            "🗣️⏱️ Full output pipeline latency: "
+            f"{self.full_output_pipeline_latency:.2f}ms (LLM: {(self.llm_inference_time or 0.0):.2f}ms, TTS: {(self.audio.tts_inference_time or 0.0):.2f}ms)"
+        )
 
         logger.info("🗣️🚀 SpeechPipelineManager initialized and workers started.")
 
