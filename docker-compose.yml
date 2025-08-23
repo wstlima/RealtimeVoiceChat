@@ -22,8 +22,52 @@ services:
        - huggingface_cache:/home/appuser/.cache/huggingface
        - torch_cache:/home/appuser/.cache/torch
     depends_on:
-    - ollama
+       - ollama
     restart: unless-stopped
+
+  # ollama:
+  #   image: ghcr.io/ggml-org/llama.cpp:server
+  #   container_name: realtime-voice-chat-ollama
+  #   environment:
+  #     - TZ=America/Sao_Paulo
+  #     - N_GPU_LAYERS=0
+  #     - MODEL=Phi-3-mini-4k-instruct-Q4_K_M.gguf
+  #     - N_GPU_LAYERS=0
+  #   volumes:
+  #     - ./services-data/llama/models:/models:ro
+  #     - ./services-data/llama/models/Phi-3-mini-4k-instruct-Q4_K_M.gguf:/models/Phi-3-mini-4k-instruct-Q4_K_M.gguf:ro
+  #   command: >
+  #     -m /models/Phi-3-mini-4k-instruct-Q4_K_M.gguf
+  #     --host 0.0.0.0
+  #     --port 11434
+  #     --ctx-size 8192
+  #     --parallel 2
+  #     --mlock
+  #   ports:
+  #     - "11434:11434"
+  #   healthcheck:
+  #     # Check if the Ollama API is responsive
+  #     test: ["CMD", "wget", "--quiet", "--spider", "--tries=1", "--timeout=10", "http://localhost:11434/api/tags"]
+  #     interval: 15s
+  #     timeout: 10s
+  #     retries: 12
+  #     start_period: 45s # Give it time to start     
+
+
+
+
+
+
+
+
+
+
+    # healthcheck:
+    #   test: ["CMD-SHELL", "curl -fsS http://localhost:8080/v1/models || exit 1"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 10
+    # restart: unless-stopped
 
   # Ollama Server Service (Using Official Image)
   ollama:
@@ -32,19 +76,28 @@ services:
     container_name: realtime-voice-chat-ollama
     # --- No 'build:' section needed here ---
     # command: ["ollama", "serve"] # Usually the default command/entrypoint
+    # command: >
+    #   -m /models/Phi-3-mini-4k-instruct-Q4_K_M.gguf
+    #   --host 0.0.0.0
+    #   --port 8080
+    #   --ctx-size 8192
+    #   --parallel 2
+    #   --mlock
+    ports:
+      - "11434:11434"
     volumes:
       # Persist Ollama models and data
       - ollama_data:/root/.ollama
     environment:
       # OLLAMA_MODELS might be useful if needed, points inside volume
-      # - OLLAMA_MODELS=/root/.ollama/models
-    # healthcheck:
+      - OLLAMA_MODELS=/root/.ollama/models
+    healthcheck:
       # Check if the Ollama API is responsive
-      # test: ["CMD", "wget", "--quiet", "--spider", "--tries=1", "--timeout=10", "http://localhost:11434/api/tags"]
-      # interval: 15s
-      # timeout: 10s
-      # retries: 12
-      # start_period: 45s # Give it time to start
+      test: ["CMD", "wget", "--quiet", "--spider", "--tries=1", "--timeout=10", "http://localhost:11434/api/tags"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 45s # Give it time to start
     restart: unless-stopped
 
 # Define named volumes for persistent data
