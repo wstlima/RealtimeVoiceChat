@@ -13,8 +13,6 @@ services:
       # --- Other App Environment Variables ---
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - MAX_AUDIO_QUEUE_SIZE=${MAX_AUDIO_QUEUE_SIZE:-50}
-      - NVIDIA_VISIBLE_DEVICES=all # For app's PyTorch/DeepSpeed/etc
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - HF_HOME=/home/appuser/.cache/huggingface
       - TORCH_HOME=/home/appuser/.cache/torch
     volumes:
@@ -25,13 +23,6 @@ services:
        - torch_cache:/home/appuser/.cache/torch
     depends_on:
     - ollama
-    deploy: # GPU access for the app
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu, compute, utility]
     restart: unless-stopped
 
   # Ollama Server Service (Using Official Image)
@@ -45,17 +36,8 @@ services:
       # Persist Ollama models and data
       - ollama_data:/root/.ollama
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all # Make GPUs visible inside container
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       # OLLAMA_MODELS might be useful if needed, points inside volume
       # - OLLAMA_MODELS=/root/.ollama/models
-    deploy: # GPU access for Ollama Service
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu, compute, utility]
     # healthcheck:
       # Check if the Ollama API is responsive
       # test: ["CMD", "wget", "--quiet", "--spider", "--tries=1", "--timeout=10", "http://localhost:11434/api/tags"]
