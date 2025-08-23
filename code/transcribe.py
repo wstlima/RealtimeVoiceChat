@@ -240,6 +240,7 @@ class TranscriptionProcessor:
         """
         def monitor():
             hot = False
+            timeout_detected = False
             # Initialize silence_time using the abstracted getter
             self.silence_time = self._get_recorder_param("speech_end_silence_start", 0.0)
 
@@ -276,12 +277,13 @@ class TranscriptionProcessor:
                     # --- Trigger Actions Based on Timing ---
 
                     # 1. Force potential sentence end detection if time has passed
-                    if time_since_silence > potential_sentence_end_time:
+                    if time_since_silence > potential_sentence_end_time and not timeout_detected:
                         # Check if realtime_text exists before logging/detecting
                         current_text = self.realtime_text if self.realtime_text else ""
                         logger.info(f"👂🔚 {Colors.YELLOW}Potential sentence end detected (timed out){Colors.RESET}: {current_text}")
                         # Use force_yield=True because this is triggered by timeout, not punctuation detection
                         self.detect_potential_sentence_end(current_text, force_yield=True, force_ellipses=True) # Force ellipses if timeout occurs
+                        timeout_detected = True
 
                     # 2. Allow TTS synthesis shortly before the final silence duration elapses
                     tts_allowance_time = silence_waiting_time - self._TTS_ALLOWANCE_OFFSET_S
@@ -304,13 +306,15 @@ class TranscriptionProcessor:
                                 self.potential_full_transcription_abort_callback()
                         hot = False
 
-                elif hot: # Exited silence period (speech_end_silence_start is 0 or None)
-                    # If we were hot, but silence ended (e.g., new speech started), transition to cold
-                    if self._is_recorder_recording(): # Check if recording actually restarted
-                         print(f"{Colors.CYAN}COLD (silence ended){Colors.RESET}")
-                         if self.potential_full_transcription_abort_callback:
-                             self.potential_full_transcription_abort_callback()
-                    hot = False
+                else:
+                    timeout_detected = False
+                    if hot: # Exited silence period (speech_end_silence_start is 0 or None)
+                        # If we were hot, but silence ended (e.g., new speech started), transition to cold
+                        if self._is_recorder_recording(): # Check if recording actually restarted
+                             print(f"{Colors.CYAN}COLD (silence ended){Colors.RESET}")
+                             if self.potential_full_transcription_abort_callback:
+                                 self.potential_full_transcription_abort_callback()
+                        hot = False
 
                 time.sleep(0.001) # Short sleep to prevent busy-waiting dominating CPU
 
