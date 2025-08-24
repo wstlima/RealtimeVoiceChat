@@ -23,9 +23,16 @@ let audioContext = null;
 let mediaStream = null;
 let micWorkletNode = null;
 let ttsWorkletNode = null;
+let visualizer = null;
 
 let isTTSPlaying = false;
 let ignoreIncomingTTS = false;
+
+// --- simple energy-based VAD ---
+let isSpeaking = false;
+let vadSilenceFrames = 0;
+const VAD_SPEECH_THRESHOLD = 0.02; // RMS threshold
+const VAD_SILENCE_FRAMES = 15;      // frames before considering silence
 
 let chatHistory = [];
 let typingUser = "";
@@ -106,7 +113,8 @@ async function startRawPcmCapture() {
     micWorkletNode = new AudioWorkletNode(audioContext, 'pcm-worklet-processor');
 
     micWorkletNode.port.onmessage = ({ data }) => {
-      const incoming = new Int16Array(data);
+      const incoming = new Int16Array(data.pcm);
+      const rms = data.rms;
       let read = 0;
       while (read < incoming.length) {
         initBatch();
@@ -124,10 +132,31 @@ async function startRawPcmCapture() {
           flushBatch();
         }
       }
+
+      // VAD logic
+      if (rms > VAD_SPEECH_THRESHOLD) {
+        vadSilenceFrames = 0;
+        if (!isSpeaking && socket && socket.readyState === WebSocket.OPEN) {
+          isSpeaking = true;
+          socket.send(JSON.stringify({ type: 'speech_start' }));
+        }
+      } else {
+        vadSilenceFrames++;
+        if (isSpeaking && vadSilenceFrames > VAD_SILENCE_FRAMES) {
+          isSpeaking = false;
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'speech_stop' }));
+          }
+        }
+      }
     };
 
     const source = audioContext.createMediaStreamSource(stream);
     source.connect(micWorkletNode);
+    if (!visualizer) {
+      visualizer = new AudioVisualizer(document.getElementById('visualizer-container'), audioContext);
+    }
+    visualizer.connectSource(source);
     statusDiv.textContent = "Recording...";
   } catch (err) {
     statusDiv.textContent = "Mic access denied.";
