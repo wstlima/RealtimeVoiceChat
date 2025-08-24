@@ -296,6 +296,15 @@ async def process_incoming_data(ws: WebSocket, app: FastAPI, incoming_chunks: as
                     logger.info("🖥️ℹ️ Received tts_stop from client.")
                     # Update connection-specific state via callbacks
                     callbacks.tts_client_playing = False
+                elif msg_type == "speech_start":
+                    logger.info("🖥️ℹ️ Received speech_start from client.")
+                    callbacks.user_interrupted = True
+                    app.state.AudioInputProcessor.interrupted = False
+                    callbacks.abort_generations("speech_start from client")
+                elif msg_type == "speech_stop":
+                    logger.info("🖥️ℹ️ Received speech_stop from client.")
+                    callbacks.user_interrupted = False
+                    app.state.AudioInputProcessor.interrupted = True
                 # Add to the handleJSONMessage function in server.py
                 elif msg_type == "clear_history":
                     logger.info("🖥️ℹ️ Received clear_history from client.")
