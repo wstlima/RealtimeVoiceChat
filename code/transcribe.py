@@ -48,7 +48,7 @@ DEFAULT_RECORDER_CONFIG: Dict[str, Any] = {
     # Callbacks will be added dynamically in _create_recorder
     "debug_mode": True,
     "initial_prompt_realtime": "The sky is blue. When the sky... She walked home. Because he... Today is sunny. If only I...",
-    "faster_whisper_vad_filter": False,
+    "faster_whisper_vad_filter": True,
 }
 
 

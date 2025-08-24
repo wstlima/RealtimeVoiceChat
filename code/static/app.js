@@ -105,6 +105,10 @@ async function startRawPcmCapture() {
     await audioContext.audioWorklet.addModule('/static/pcmWorkletProcessor.js');
     micWorkletNode = new AudioWorkletNode(audioContext, 'pcm-worklet-processor');
 
+    if (window.AudioVisualizer) {
+      AudioVisualizer.start(audioContext, stream);
+    }
+
     micWorkletNode.port.onmessage = ({ data }) => {
       const incoming = new Int16Array(data);
       let read = 0;
@@ -173,6 +177,9 @@ function cleanupAudio() {
   if (ttsWorkletNode) {
     ttsWorkletNode.disconnect();
     ttsWorkletNode = null;
+  }
+  if (window.AudioVisualizer) {
+    AudioVisualizer.stop();
   }
   if (audioContext) {
     audioContext.close();
