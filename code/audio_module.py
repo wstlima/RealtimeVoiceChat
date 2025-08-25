@@ -57,8 +57,7 @@ def ensure_lasinya_models(models_root: str = "models", model_name: str = "Lasiny
     for fn in files:
         local_file = os.path.join(base, fn)
         if not os.path.exists(local_file):
-            # Not using logger here as it might not be configured yet during module import/init
-            print(f"👄⏬ Downloading {fn} to {base}")
+            logger.info(f"👄⏬ Downloading {fn} to {base}")
             hf_hub_download(
                 repo_id="KoljaB/XTTS_Lasinya",
                 filename=fn,
