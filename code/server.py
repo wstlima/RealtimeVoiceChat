@@ -270,13 +270,11 @@ async def process_incoming_data(ws: WebSocket, app: FastAPI, incoming_chunks: as
                 # The rest of the payload is raw PCM bytes
                 metadata["pcm"] = raw[8:]
 
-                # Check queue size before putting data
-                current_qsize = incoming_chunks.qsize()
-                if current_qsize < MAX_AUDIO_QUEUE_SIZE:
-                    # Now put only the metadata dict (containing PCM audio) into the processing queue.
-                    await incoming_chunks.put(metadata)
-                else:
-                    # Queue is full, drop the chunk and log a warning
+                # Attempt to enqueue the metadata without waiting; drop if the queue is full
+                try:
+                    incoming_chunks.put_nowait(metadata)
+                except asyncio.QueueFull:
+                    current_qsize = incoming_chunks.qsize()
                     logger.warning(
                         f"🖥️⚠️ Audio queue full ({current_qsize}/{MAX_AUDIO_QUEUE_SIZE}); dropping chunk. Possible lag."
                     )
@@ -890,7 +888,7 @@ async def websocket_endpoint(ws: WebSocket):
     logger.info("🖥️✅ Client connected via WebSocket.")
 
     message_queue = asyncio.Queue()
-    audio_chunks = asyncio.Queue()
+    audio_chunks = asyncio.Queue(maxsize=MAX_AUDIO_QUEUE_SIZE)
 
     # Set up callback manager - THIS NOW HOLDS THE CONNECTION-SPECIFIC STATE
     callbacks = TranscriptionCallbacks(app, message_queue)
