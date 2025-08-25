@@ -15,15 +15,26 @@ services:
       - MAX_AUDIO_QUEUE_SIZE=${MAX_AUDIO_QUEUE_SIZE:-50}
       - HF_HOME=/home/appuser/.cache/huggingface
       - TORCH_HOME=/home/appuser/.cache/torch
+    # command: ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/code"]
     volumes:
        # Optional: Mount code for live development
-       # - ./code:/app/code
+       - ./code:/app/code
        # Mount cache directories
        - huggingface_cache:/home/appuser/.cache/huggingface
        - torch_cache:/home/appuser/.cache/torch
+      #  - services-data/app/cache:/home/appuser/.cache
     depends_on:
        - ollama
     restart: unless-stopped
+    networks:
+      - default
+    healthcheck:
+      # Check if the Ollama API is responsive
+      test: ["CMD", "wget", "--quiet", "--spider", "--tries=1", "--timeout=10", "http://ollama:11434/api/tags"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 45s # Give it time to start        
 
   # ollama:
   #   image: ghcr.io/ggml-org/llama.cpp:server
@@ -87,10 +98,13 @@ services:
       - "11434:11434"
     volumes:
       # Persist Ollama models and data
-      - ollama_data:/root/.ollama
+      # - ollama_data:/root/.ollama
+      - ./services-data/ollama:/root/.ollama
     environment:
       # OLLAMA_MODELS might be useful if needed, points inside volume
       - OLLAMA_MODELS=/root/.ollama/models
+      - LLM_START_PROVIDER=ollama
+      - LLM_START_MODEL=hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF:Q8_0
     healthcheck:
       # Check if the Ollama API is responsive
       test: ["CMD", "wget", "--quiet", "--spider", "--tries=1", "--timeout=10", "http://localhost:11434/api/tags"]
@@ -99,6 +113,12 @@ services:
       retries: 12
       start_period: 45s # Give it time to start
     restart: unless-stopped
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge
 
 # Define named volumes for persistent data
 volumes:

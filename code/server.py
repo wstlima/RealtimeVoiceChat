@@ -32,7 +32,7 @@ TTS_START_ENGINE = "kokoro"
 TTS_ORPHEUS_MODEL = "orpheus-3b-0.1-ft-Q8_0-GGUF/orpheus-3b-0.1-ft-q8_0.gguf"
 
 LLM_START_PROVIDER = "ollama"
-LLM_START_MODEL = "hf.co/bartowski/huihui-ai_Mistral-Small-24B-Instruct-2501-abliterated-GGUF:Q4_K_M"
+LLM_START_MODEL = "hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF:Q8_0"
 NO_THINK = False
 DIRECT_STREAM = TTS_START_ENGINE=="orpheus"
 

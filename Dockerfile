@@ -90,7 +90,7 @@ ENV MAX_AUDIO_QUEUE_SIZE=50
 ENV LOG_LEVEL=INFO
 ENV RUNNING_IN_DOCKER=true
 ENV LLM_START_PROVIDER=ollama
-ENV LLM_START_MODEL=hf.co/bartowski/huihui-ai_Mistral-Small-24B-Instruct-2501-abliterated-GGUF:Q4_K_M
+ENV LLM_START_MODEL=hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF:Q8_0
 ENV WHISPER_MODEL=${WHISPER_MODEL}
 
 
@@ -179,9 +179,9 @@ WORKDIR /app/code
 # ENV WHISPER_MODEL=${WHISPER_MODEL}
 
 
-USER root
+USER appuser
 
 EXPOSE 8000
 
 ENTRYPOINT ["/entrypoint.sh"]
-# CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/code"]
