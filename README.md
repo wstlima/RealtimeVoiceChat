@@ -205,6 +205,8 @@ Your application is already running via `docker compose up -d`! Check logs using
     python server.py
     ```
 
+**Important:** All interaction with the backend happens over a WebSocket at `/ws`. Traditional REST endpoints such as `/api/chat` are not implemented; HTTP requests to them will return a message directing you to the WebSocket route.
+
 **Accessing the Client (Both Methods):**
 
 1.  Open your web browser to `http://localhost:8000` (or your server's IP if running remotely/in Docker on another machine).
