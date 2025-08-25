@@ -175,6 +175,11 @@ async def get_index() -> HTMLResponse:
         html_content = f.read()
     return HTMLResponse(content=html_content)
 
+@app.api_route("/api/chat", methods=["GET", "POST"])
+async def rest_chat_redirect() -> dict:
+    """Inform clients that REST chat endpoints are not available."""
+    return {"detail": "Use the WebSocket endpoint at /ws for real-time chat"}
+
 # --------------------------------------------------------------------
 # Utility functions
 # --------------------------------------------------------------------
