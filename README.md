@@ -229,6 +229,8 @@ Want to tweak the AI's voice, brain, or how it listens? Modify the Python files 
     *   Modify `DEFAULT_RECORDER_CONFIG` to change the Whisper model (`model`), language (`language`), silence thresholds (`silence_limit_seconds`), etc. The default `base.en` model is pre-downloaded during the Docker build.
 *   **Turn Detection Sensitivity (`turndetect.py`):**
     *   Adjust pause duration constants within the `TurnDetector.update_settings` method.
+*   **CORS Origins (`server.py`):**
+    *   Restrict cross-origin requests by setting the `ALLOWED_ORIGINS` environment variable to a comma-separated list of allowed domains (e.g., `http://localhost:3000,https://example.com`). The default `*` allows all origins.
 *   **SSL/HTTPS (`server.py`):**
     *   Set `USE_SSL = True` and provide paths to your certificate (`SSL_CERT_PATH`) and key (`SSL_KEY_PATH`) files.
     *   **Docker Users:** You'll need to adjust `docker-compose.yml` to map the SSL port (e.g., 443) and potentially mount your certificate files as volumes.
