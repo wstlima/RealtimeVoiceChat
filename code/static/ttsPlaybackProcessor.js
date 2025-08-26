@@ -22,6 +22,7 @@ class TTSPlaybackProcessor extends AudioWorkletProcessor {
       // (You may also check here if event.data instanceof Int16Array if needed)
       this.bufferQueue.push(event.data);
       this.samplesRemaining += event.data.length;
+      console.log('Received chunk', event.data.length, 'samplesRemaining', this.samplesRemaining);
     };
   }
 
@@ -30,10 +31,12 @@ class TTSPlaybackProcessor extends AudioWorkletProcessor {
 
     if (this.samplesRemaining === 0) {
       outputChannel.fill(0);
+      const wasPlaying = this.isPlaying;
       if (this.isPlaying) {
         this.isPlaying = false;
         this.port.postMessage({ type: 'ttsPlaybackStopped' });
       }
+      console.log('samplesRemaining reached zero; isPlaying:', wasPlaying, '->', this.isPlaying);
       return true;
     }
 
