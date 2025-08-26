@@ -306,9 +306,20 @@ function handleJSONMessage({ type, content }) {
     renderMessages();
     return;
   }
+  if (type === "speech_start") {
+    ignoreIncomingTTS = true;
+    console.log(
+      `ignoreIncomingTTS set to true. Reason: ${type}. Reset in ${TTS_IGNORE_TIMEOUT_MS}ms unless interrupted.`
+    );
+    scheduleTTSIgnoreReset();
+    return;
+  }
   if (type === "tts_chunk") {
     if (ignoreIncomingTTS) {
-      console.log("Ignoring tts_chunk because ignoreIncomingTTS is true.");
+      console.log(
+        `Ignoring tts_chunk because ignoreIncomingTTS is true. Waiting ${TTS_IGNORE_TIMEOUT_MS}ms for tts_interruption before resetting.`
+      );
+      scheduleTTSIgnoreReset();
       return;
     }
     console.log("Processing tts_chunk.");
