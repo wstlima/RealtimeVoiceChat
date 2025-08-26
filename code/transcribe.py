@@ -109,6 +109,8 @@ class TranscriptionProcessor:
             tts_allowed_event: Optional[threading.Event] = None, # Note: This seems unused in the original code provided
             pipeline_latency: float = 0.5,
             recorder_config: Optional[Dict[str, Any]] = None, # Allow passing custom config
+            before_final_silence_limit: float = 2.0,
+            max_speech_transitions: int = 6,
     ) -> None:
         """
         Initializes the TranscriptionProcessor.
@@ -128,6 +130,8 @@ class TranscriptionProcessor:
             tts_allowed_event: An event that might be set when TTS synthesis is allowed (currently unused in provided logic).
             pipeline_latency: Estimated latency of the downstream processing pipeline in seconds. Used for timing calculations.
             recorder_config: Optional dictionary to override default RealtimeSTT recorder configuration.
+            before_final_silence_limit: Seconds of silence before triggering `before_final_sentence`.
+            max_speech_transitions: Number of start/stop events before forcing `before_final_sentence`.
         """
         self.source_language = source_language
         self.realtime_transcription_callback = realtime_transcription_callback
@@ -156,6 +160,10 @@ class TranscriptionProcessor:
         self.silence_time: float = 0.0
         self.silence_active: bool = False
         self.last_audio_copy: Optional[np.ndarray] = None
+        self.before_final_silence_limit = before_final_silence_limit
+        self.max_speech_transitions = max_speech_transitions
+        self.speech_transition_count: int = 0
+        self.before_final_triggered: bool = False
 
         self.on_tts_allowed_to_synthesize: Optional[Callable] = None # Note: Seems unused
 
@@ -308,6 +316,23 @@ class TranscriptionProcessor:
                             if self.potential_full_transcription_abort_callback:
                                 self.potential_full_transcription_abort_callback()
                         hot = False
+
+                    # 4. Trigger on_before_final after configured silence or excessive transitions
+                    if (
+                        self.before_final_sentence
+                        and not self.before_final_triggered
+                        and time_since_silence > self.before_final_silence_limit
+                    ):
+                        logger.debug("👂⏳ Silence limit reached; triggering before_final_sentence")
+                        self._trigger_before_final()
+
+                    if (
+                        self.before_final_sentence
+                        and not self.before_final_triggered
+                        and self.speech_transition_count >= self.max_speech_transitions
+                    ):
+                        logger.debug("👂🔁 Transition limit reached; triggering before_final_sentence")
+                        self._trigger_before_final()
 
                 else:
                     timeout_detected = False
@@ -580,6 +605,18 @@ class TranscriptionProcessor:
             if self.silence_active_callback:
                 self.silence_active_callback(silence_active)
 
+    def _trigger_before_final(self) -> None:
+        """Safely invoke the `before_final_sentence` callback once."""
+        if not self.before_final_sentence or self.before_final_triggered:
+            return
+        audio_copy = self.get_last_audio_copy()
+        try:
+            self.before_final_sentence(audio_copy, self.realtime_text)
+        except Exception as e:
+            logger.error(f"👂💥 Error in before_final_sentence callback: {e}", exc_info=True)
+        self.before_final_triggered = True
+        self.speech_transition_count = 0
+
     def get_last_audio_copy(self) -> Optional[np.ndarray]:
         """
         Returns the last successfully captured audio buffer as a float32 NumPy array.
@@ -670,14 +707,23 @@ class TranscriptionProcessor:
             # Capture silence start time immediately. Use recorder's time if available.
             recorder_silence_start = self._get_recorder_param("speech_end_silence_start", None)
             self.silence_time = recorder_silence_start if recorder_silence_start else time.time()
+            self.speech_transition_count += 1
             logger.debug(f"👂🤫 Silence detected (start_silence_detection called). Silence time set to: {self.silence_time}")
+            if self.speech_transition_count >= self.max_speech_transitions and not self.before_final_triggered:
+                logger.debug("👂🔁 Transition threshold met during silence start")
+                self._trigger_before_final()
 
 
         def stop_silence_detection():
             """Callback triggered when recorder detects end of silence (start of speech)."""
             self.set_silence(False)
             self.silence_time = 0.0 # Reset silence time
+            self.speech_transition_count += 1
+            self.before_final_triggered = False
             logger.debug("👂🗣️ Speech detected (stop_silence_detection called). Silence time reset.")
+            if self.speech_transition_count >= self.max_speech_transitions and not self.before_final_triggered:
+                logger.debug("👂🔁 Transition threshold met during speech start")
+                self._trigger_before_final()
 
 
         def start_recording():
@@ -685,6 +731,8 @@ class TranscriptionProcessor:
             logger.info("👂▶️ Recording started.")
             self.set_silence(False) # Ensure silence is marked inactive
             self.silence_time = 0.0   # Ensure silence timer is reset
+            self.before_final_triggered = False
+            self.speech_transition_count = 0
             if self.on_recording_start_callback:
                 self.on_recording_start_callback()
 
@@ -703,6 +751,8 @@ class TranscriptionProcessor:
                     # Return value might influence recorder, pass it through.
                     # Default to False if callback returns None or throws error
                     result = self.before_final_sentence(audio_copy, self.realtime_text)
+                    self.before_final_triggered = True
+                    self.speech_transition_count = 0
                     return result if isinstance(result, bool) else False
                 except Exception as e:
                     logger.error(f"👂💥 Error in before_final_sentence callback: {e}", exc_info=True)
