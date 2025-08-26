@@ -471,7 +471,7 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                         logger.info(
                             "🖥️🧹 tts_to_client timeout fallback executed; running_generation cleared"
                         )
-                        first_chunk_wait_start = time.time()
+                        first_chunk_wait_start = None
                 await asyncio.sleep(0.001)
                 log_status()
                 continue
@@ -506,17 +506,35 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                     logger.info(
                         "🖥️🧹 First chunk timeout fallback executed; running_generation cleared"
                     )
-                    first_chunk_wait_start = time.time()
+                    first_chunk_wait_start = None
                     await asyncio.sleep(0.001)
                     log_status()
                     continue
                 else:
                     logger.info("🖥️⏳ Waiting for first TTS chunk")
+                    await asyncio.sleep(0.001)
+                    log_status()
+                    continue
+
+            # Abort if first chunk isn't sent within the timeout even after readiness
+            if (
+                not callbacks.tts_chunk_sent
+                and first_chunk_wait_start
+                and time.time() - first_chunk_wait_start > FIRST_CHUNK_TIMEOUT
+            ):
+                reason = "first TTS chunk not sent within FIRST_CHUNK_TIMEOUT; forcing final answer"
+                logger.warning(f"🖥️⌛ {reason}")
+                callbacks.send_final_assistant_answer(forced=True)
+                app.state.SpeechPipelineManager.running_generation = None
+                callbacks.tts_chunk_sent = False
+                callbacks.reset_state()
+                logger.info(
+                    "🖥️🧹 First chunk send timeout fallback executed; running_generation cleared"
+                )
+                first_chunk_wait_start = None
                 await asyncio.sleep(0.001)
                 log_status()
                 continue
-            else:
-                first_chunk_wait_start = None
 
             chunk = None
             try:
@@ -572,6 +590,7 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                 asyncio.create_task(_reset_interrupt_flag_async(app, callbacks))
 
             callbacks.tts_chunk_sent = True # Set via callbacks
+            first_chunk_wait_start = None
 
     except asyncio.CancelledError:
         pass # Task cancellation is expected on disconnect
