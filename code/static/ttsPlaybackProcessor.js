@@ -22,7 +22,13 @@ class TTSPlaybackProcessor extends AudioWorkletProcessor {
       // (You may also check here if event.data instanceof Int16Array if needed)
       this.bufferQueue.push(event.data);
       this.samplesRemaining += event.data.length;
-      console.log('Received chunk', event.data.length, 'samplesRemaining', this.samplesRemaining);
+      // Log each incoming chunk and total samples remaining for correlation with server logs
+      console.log(
+        'Received chunk',
+        event.data.length,
+        'samplesRemaining',
+        this.samplesRemaining
+      );
     };
   }
 
@@ -57,6 +63,13 @@ class TTSPlaybackProcessor extends AudioWorkletProcessor {
       if (this.readOffset >= currentBuffer.length) {
         this.bufferQueue.shift();
         this.readOffset = 0;
+        // Log whenever a chunk has been fully consumed during playback
+        console.log(
+          'Finished chunk',
+          currentBuffer.length,
+          'samplesRemaining',
+          this.samplesRemaining
+        );
       }
     }
 
