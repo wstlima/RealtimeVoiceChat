@@ -420,12 +420,6 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
 
             def log_status():
                 nonlocal prev_status
-                last_quick_answer_chunk_decayed = (
-                    last_quick_answer_chunk
-                    and time.time() - last_quick_answer_chunk > TTS_FINAL_TIMEOUT
-                    and time.time() - last_chunk_sent > TTS_FINAL_TIMEOUT
-                )
-
                 curr_status = (
                     # Access connection-specific state via callbacks
                     int(callbacks.tts_to_client),
