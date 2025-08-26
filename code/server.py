@@ -622,7 +622,11 @@ class TranscriptionCallbacks:
 
 
     def reset_state(self):
-        """Resets connection-specific state flags and variables to their initial values."""
+        """Resets connection-specific state flags and variables to their initial values.
+
+        This also clears ``assistant_answer``; ensure that ``send_final_assistant_answer``
+        has been called beforehand if a forced final message is required.
+        """
         # Reset all connection-specific state flags
         self.tts_to_client = False
         self.user_interrupted = False
@@ -884,16 +888,28 @@ class TranscriptionCallbacks:
         final_answer = ""
         # Access global manager state
         if self.app.state.SpeechPipelineManager.is_valid_gen():
-            final_answer = self.app.state.SpeechPipelineManager.running_generation.quick_answer + self.app.state.SpeechPipelineManager.running_generation.final_answer
+            final_answer = (
+                self.app.state.SpeechPipelineManager.running_generation.quick_answer
+                + self.app.state.SpeechPipelineManager.running_generation.final_answer
+            )
 
-        if not final_answer: # Check if constructed answer is empty
-            # If forced, try using the last known partial answer from this connection
-            if forced and self.assistant_answer:
-                 final_answer = self.assistant_answer
-                 logger.warning(f"🖥️⚠️ Using partial answer as final (forced): '{final_answer}'")
+        if not final_answer:  # Check if constructed answer is empty
+            if self.assistant_answer:
+                logger.warning(
+                    f"🖥️⚠️ Final answer empty; using partial{' (forced)' if forced else ''}: '{self.assistant_answer}'"
+                )
+                final_answer = self.assistant_answer
             else:
-                logger.warning(f"🖥️⚠️ Final assistant answer was empty, not sending.")
-                return# Nothing to send
+                logger.error(
+                    "🖥️💥 Final assistant answer empty and no partial available. Notifying client (reset_state may have cleared it)."
+                )
+                self.message_queue.put_nowait(
+                    {
+                        "type": "error",
+                        "content": "No assistant answer available.",
+                    }
+                )
+                return  # Nothing to send
 
         logger.debug(f"🖥️✅ Attempting to send final answer: '{final_answer}' (Sent previously: {self.final_assistant_answer_sent})")
 
