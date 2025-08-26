@@ -79,8 +79,8 @@ RUN mkdir -p /app/code && \
 chown -R appuser:appgroup /app/code && \
 chmod -R 750 /app/code
 COPY --chown=1001:1001 code/ ./code/
-COPY --chown=1001:1001 entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh    
+# COPY --chown=1001:1001 entrypoint.sh /entrypoint.sh
+# RUN chmod +x /entrypoint.sh    
 
 ENV HOME=/home/appuser
 ENV HF_HOME=${HOME}/.cache/huggingface
