@@ -451,6 +451,17 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
 
             # Use connection-specific state via callbacks
             if not callbacks.tts_to_client:
+                if app.state.SpeechPipelineManager.running_generation:
+                    if first_chunk_wait_start is None:
+                        first_chunk_wait_start = time.time()
+                        logger.info("🖥️🔇 tts_to_client is False; waiting for client readiness")
+                    elif time.time() - first_chunk_wait_start > FIRST_CHUNK_TIMEOUT:
+                        logger.warning("🖥️⌛ tts_to_client timeout - forcing final answer")
+                        callbacks.send_final_assistant_answer(forced=True)
+                        app.state.SpeechPipelineManager.running_generation = None
+                        callbacks.tts_chunk_sent = False
+                        callbacks.reset_state()
+                        first_chunk_wait_start = None
                 await asyncio.sleep(0.001)
                 log_status()
                 continue
@@ -459,6 +470,7 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                 first_chunk_wait_start = time.time()
 
             if not app.state.SpeechPipelineManager.running_generation:
+                first_chunk_wait_start = None
                 await asyncio.sleep(0.001)
                 log_status()
                 continue
@@ -482,6 +494,8 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                     await asyncio.sleep(0.001)
                     log_status()
                     continue
+                else:
+                    logger.info("🖥️⏳ Waiting for first TTS chunk")
                 await asyncio.sleep(0.001)
                 log_status()
                 continue
