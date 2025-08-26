@@ -25,6 +25,7 @@ START_STT_SERVER = False # Set to True to use the client/server version of Realt
 DEFAULT_RECORDER_CONFIG: Dict[str, Any] = {
     "use_microphone": False,
     "spinner": False,
+    # "silence_limit_seconds": 5,
     "model": "small",
     "realtime_model_type": "small",
     "use_main_model_for_realtime": False,
@@ -94,7 +95,7 @@ class TranscriptionProcessor:
 
     def __init__(
             self,
-            source_language: str = "en",
+            source_language: str = "pt",
             realtime_transcription_callback: Optional[Callable[[str], None]] = None,
             full_transcription_callback: Optional[Callable[[str], None]] = None,
             potential_full_transcription_callback: Optional[Callable[[str], None]] = None,
@@ -139,7 +140,9 @@ class TranscriptionProcessor:
         self.on_recording_start_callback = on_recording_start_callback
         self.is_orpheus = is_orpheus
         self.pipeline_latency = pipeline_latency
-        self.recorder: Optional[AudioToTextRecorder | AudioToTextRecorderClient] = None
+        self.silence_limit_seconds = 5
+        from typing import Union
+        self.recorder: Optional[Union[AudioToTextRecorder, AudioToTextRecorderClient]] = None
         self.is_silero_speech_active: bool = False # Note: Seems unused
         self.silero_working: bool = False         # Note: Seems unused
         self.on_wakeword_detection_start: Optional[Callable] = None # Note: Seems unused
@@ -796,10 +799,10 @@ class TranscriptionProcessor:
                 # Check if feed_audio expects metadata and provide if available
                 if START_STT_SERVER:
                      # Client might require metadata in a specific format
-                     self.recorder.feed_audio(chunk) # Assuming client handles metadata internally or doesn't need it per chunk
+                     self.recorder.feed_audio(chunk, audio_meta_data) # Assuming client handles metadata internally or doesn't need it per chunk
                 else:
                      # Local recorder might use metadata if provided
-                     self.recorder.feed_audio(chunk) # Assuming local handles it similarly for now
+                     self.recorder.feed_audio(chunk, audio_meta_data) # Assuming local handles it similarly for now
 
                 logger.debug(f"👂🔊 Fed audio chunk of size {len(chunk)} bytes to recorder.")
             except Exception as e:

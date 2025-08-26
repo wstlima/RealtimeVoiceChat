@@ -28,6 +28,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse, Response, FileResponse
 
 USE_SSL = False
+LANGUAGE = "pt"
+START_ENGINE = "kokoro" # or "orpheus"
 TTS_START_ENGINE = "kokoro"
 TTS_ORPHEUS_MODEL = "orpheus-3b-0.1-ft-Q8_0-GGUF/orpheus-3b-0.1-ft-q8_0.gguf"
 
