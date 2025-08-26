@@ -16,4 +16,4 @@ echo "Entrypoint: Switching to user appuser (1001) and executing command: $@" # 
 # Drop privileges using gosu before executing the CMD passed as arguments ($@).
 # 'gosu appuser' finds the user named 'appuser' (which is UID 1001).
 # 'exec' replaces the script process with the application process.
-exec gosu appuser "$@"
+# exec gosu appuser "$@"

@@ -183,5 +183,6 @@ USER root
 
 EXPOSE 8000
 
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/code"]
+# ENTRYPOINT ["/entrypoint.sh"]
+# CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+# CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/code"]
