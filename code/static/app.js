@@ -29,6 +29,8 @@ let isTTSPlaying = false;
 let ignoreIncomingTTS = false;
 let ttsIgnoreTimer = null;
 const TTS_IGNORE_TIMEOUT_MS = 2000;
+let ttsStartTimer = null;
+const TTS_START_TIMEOUT_MS = 2000;
 
 // --- simple energy-based VAD ---
 let isSpeaking = false;
@@ -110,6 +112,18 @@ function scheduleTTSIgnoreReset() {
       );
     }
   }, TTS_IGNORE_TIMEOUT_MS);
+}
+
+function scheduleTTSStartWarning() {
+  if (ttsStartTimer) {
+    clearTimeout(ttsStartTimer);
+  }
+  ttsStartTimer = setTimeout(() => {
+    console.warn(
+      `ttsPlaybackStarted did not occur within ${TTS_START_TIMEOUT_MS}ms after receiving audio chunk.`
+    );
+    statusDiv.textContent = "No audio playback detected.";
+  }, TTS_START_TIMEOUT_MS);
 }
 
 async function startRawPcmCapture() {
@@ -195,6 +209,10 @@ async function setupTTSPlayback() {
   ttsWorkletNode.port.onmessage = (event) => {
     const { type } = event.data;
     if (type === 'ttsPlaybackStarted') {
+      if (ttsStartTimer) {
+        clearTimeout(ttsStartTimer);
+        ttsStartTimer = null;
+      }
       if (!isTTSPlaying && socket && socket.readyState === WebSocket.OPEN) {
         isTTSPlaying = true;
         console.log(
@@ -203,6 +221,10 @@ async function setupTTSPlayback() {
         socket.send(JSON.stringify({ type: 'tts_start' }));
       }
     } else if (type === 'ttsPlaybackStopped') {
+      if (ttsStartTimer) {
+        clearTimeout(ttsStartTimer);
+        ttsStartTimer = null;
+      }
       if (isTTSPlaying && socket && socket.readyState === WebSocket.OPEN) {
         isTTSPlaying = false;
         console.log(
@@ -293,6 +315,9 @@ function handleJSONMessage({ type, content }) {
     const int16Data = base64ToInt16Array(content);
     if (ttsWorkletNode) {
       ttsWorkletNode.port.postMessage(int16Data);
+      if (!isTTSPlaying) {
+        scheduleTTSStartWarning();
+      }
     }
     return;
   }
@@ -302,6 +327,10 @@ function handleJSONMessage({ type, content }) {
     }
     isTTSPlaying = false;
     ignoreIncomingTTS = false;
+    if (ttsStartTimer) {
+      clearTimeout(ttsStartTimer);
+      ttsStartTimer = null;
+    }
     if (ttsIgnoreTimer) {
       clearTimeout(ttsIgnoreTimer);
       ttsIgnoreTimer = null;
