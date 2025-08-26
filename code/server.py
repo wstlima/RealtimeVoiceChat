@@ -403,6 +403,7 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
         last_quick_answer_chunk = 0
         last_chunk_sent = 0
         prev_status = None
+        tts_final_wait_start = None
 
         while True:
             await asyncio.sleep(0.001) # Yield control
@@ -480,15 +481,34 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                 chunk = app.state.SpeechPipelineManager.running_generation.audio_chunks.get_nowait()
                 if chunk:
                     last_quick_answer_chunk = time.time()
+                    tts_final_wait_start = None
             except Empty:
                 final_expected = app.state.SpeechPipelineManager.running_generation.quick_answer_provided
                 audio_final_finished = app.state.SpeechPipelineManager.running_generation.audio_final_finished
+
+                if final_expected and not audio_final_finished:
+                    if tts_final_wait_start is None:
+                        tts_final_wait_start = time.time()
+                        logger.debug("🖥️⏳ Waiting for final TTS chunks")
+                    elif time.time() - tts_final_wait_start > TTS_FINAL_TIMEOUT:
+                        logger.warning("🖥️⌛ TTS final chunk timeout - forcing final answer")
+                        callbacks.send_final_assistant_answer(forced=True)
+                        app.state.SpeechPipelineManager.running_generation = None
+                        callbacks.tts_chunk_sent = False
+                        callbacks.reset_state()
+                        tts_final_wait_start = None
+
+                    await asyncio.sleep(0.001)
+                    log_status()
+                    continue
+
+                tts_final_wait_start = None
 
                 if not final_expected or audio_final_finished:
                     logger.info("🖥️🏁 Sending of TTS chunks and 'user request/assistant answer' cycle finished.")
                     callbacks.send_final_assistant_answer() # Callbacks method
 
-                    assistant_answer = app.state.SpeechPipelineManager.running_generation.quick_answer + app.state.SpeechPipelineManager.running_generation.final_answer                    
+                    assistant_answer = app.state.SpeechPipelineManager.running_generation.quick_answer + app.state.SpeechPipelineManager.running_generation.final_answer
                     app.state.SpeechPipelineManager.running_generation = None
 
                     callbacks.tts_chunk_sent = False # Reset via callbacks
