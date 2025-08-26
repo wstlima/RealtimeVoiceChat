@@ -27,6 +27,8 @@ let visualizer = null;
 
 let isTTSPlaying = false;
 let ignoreIncomingTTS = false;
+let ttsIgnoreTimer = null;
+const TTS_IGNORE_TIMEOUT_MS = 2000;
 
 // --- simple energy-based VAD ---
 let isSpeaking = false;
@@ -96,6 +98,20 @@ function base64ToInt16Array(b64) {
   return new Int16Array(buf);
 }
 
+function scheduleTTSIgnoreReset() {
+  if (ttsIgnoreTimer) {
+    clearTimeout(ttsIgnoreTimer);
+  }
+  ttsIgnoreTimer = setTimeout(() => {
+    if (ignoreIncomingTTS) {
+      ignoreIncomingTTS = false;
+      console.log(
+        `ignoreIncomingTTS reset to false after ${TTS_IGNORE_TIMEOUT_MS}ms timeout`
+      );
+    }
+  }, TTS_IGNORE_TIMEOUT_MS);
+}
+
 async function startRawPcmCapture() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -139,6 +155,11 @@ async function startRawPcmCapture() {
         if (!isSpeaking && socket && socket.readyState === WebSocket.OPEN) {
           isSpeaking = true;
           socket.send(JSON.stringify({ type: 'speech_start' }));
+          ignoreIncomingTTS = true;
+          console.log(
+            `ignoreIncomingTTS set to true. Reason: speech_start. Reset in ${TTS_IGNORE_TIMEOUT_MS}ms unless interrupted.`
+          );
+          scheduleTTSIgnoreReset();
         }
       } else {
         vadSilenceFrames++;
@@ -264,7 +285,11 @@ function handleJSONMessage({ type, content }) {
     return;
   }
   if (type === "tts_chunk") {
-    if (ignoreIncomingTTS) return;
+    if (ignoreIncomingTTS) {
+      console.log("Ignoring tts_chunk because ignoreIncomingTTS is true.");
+      return;
+    }
+    console.log("Processing tts_chunk.");
     const int16Data = base64ToInt16Array(content);
     if (ttsWorkletNode) {
       ttsWorkletNode.port.postMessage(int16Data);
@@ -277,6 +302,11 @@ function handleJSONMessage({ type, content }) {
     }
     isTTSPlaying = false;
     ignoreIncomingTTS = false;
+    if (ttsIgnoreTimer) {
+      clearTimeout(ttsIgnoreTimer);
+      ttsIgnoreTimer = null;
+    }
+    console.log(`ignoreIncomingTTS set to false. Reason: ${type}.`);
     if (type === "stop_tts" && socket && socket.readyState === WebSocket.OPEN) {
       console.log("TTS playback stopped. Reason: stop_tts.");
       socket.send(JSON.stringify({ type: 'tts_stop' }));
