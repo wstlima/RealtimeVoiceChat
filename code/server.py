@@ -459,11 +459,12 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                         first_chunk_wait_start = time.time()
                         logger.info("🖥️🔇 tts_to_client is False; waiting for client readiness")
                     elif time.time() - first_chunk_wait_start > FIRST_CHUNK_TIMEOUT:
-                        logger.warning("🖥️⌛ tts_to_client timeout - forcing final answer")
+                        logger.warning("🖥️⌛ tts_to_client timeout - triggering fallback to force final answer")
                         callbacks.send_final_assistant_answer(forced=True)
                         app.state.SpeechPipelineManager.running_generation = None
                         callbacks.tts_chunk_sent = False
                         callbacks.reset_state()
+                        logger.info("🖥️🧹 tts_to_client timeout fallback executed; running_generation cleared")
                         first_chunk_wait_start = None
                 await asyncio.sleep(0.001)
                 log_status()
@@ -488,11 +489,12 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
 
             if not app.state.SpeechPipelineManager.running_generation.quick_answer_first_chunk_ready:
                 if first_chunk_wait_start and time.time() - first_chunk_wait_start > FIRST_CHUNK_TIMEOUT:
-                    logger.warning("🖥️⌛ TTS first chunk timeout - forcing final answer")
+                    logger.warning("🖥️⌛ TTS first chunk timeout - triggering fallback to force final answer")
                     callbacks.send_final_assistant_answer(forced=True)
                     app.state.SpeechPipelineManager.running_generation = None
                     callbacks.tts_chunk_sent = False
                     callbacks.reset_state()
+                    logger.info("🖥️🧹 First chunk timeout fallback executed; running_generation cleared")
                     first_chunk_wait_start = None
                     await asyncio.sleep(0.001)
                     log_status()
