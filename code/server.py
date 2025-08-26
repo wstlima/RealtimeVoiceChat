@@ -922,10 +922,11 @@ class TranscriptionCallbacks:
         """
         final_answer = ""
         # Access global manager state
-        if self.app.state.SpeechPipelineManager.is_valid_gen():
+        spm = self.app.state.SpeechPipelineManager
+        if spm.is_valid_gen():
             final_answer = (
-                self.app.state.SpeechPipelineManager.running_generation.quick_answer
-                + self.app.state.SpeechPipelineManager.running_generation.final_answer
+                spm.running_generation.quick_answer
+                + spm.running_generation.final_answer
             )
 
         if not final_answer:  # Check if constructed answer is empty
@@ -961,7 +962,7 @@ class TranscriptionCallbacks:
                     "type": "final_assistant_answer",
                     "content": cleaned_answer
                 })
-                self.app.state.SpeechPipelineManager.history.append({
+                spm.history.append({
                     "role": "assistant",
                     "content": cleaned_answer,
                 })
