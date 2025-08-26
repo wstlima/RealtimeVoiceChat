@@ -65,6 +65,7 @@ from colors import Colors
 LANGUAGE = "pt"
 # TTS_FINAL_TIMEOUT = 0.5 # unsure if 1.0 is needed for stability
 TTS_FINAL_TIMEOUT = 1.0 # unsure if 1.0 is needed for stability
+FIRST_CHUNK_TIMEOUT = 5.0  # Maximum wait for first TTS chunk before forcing final answer
 
 # --------------------------------------------------------------------
 # Custom no-cache StaticFiles
@@ -404,6 +405,7 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
         last_chunk_sent = 0
         prev_status = None
         tts_final_wait_start = None
+        first_chunk_wait_start = None
 
         while True:
             await asyncio.sleep(0.001) # Yield control
@@ -458,6 +460,9 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                 log_status()
                 continue
 
+            if first_chunk_wait_start is None:
+                first_chunk_wait_start = time.time()
+
             if not app.state.SpeechPipelineManager.running_generation:
                 await asyncio.sleep(0.001)
                 log_status()
@@ -472,9 +477,21 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                 app.state.SpeechPipelineManager.running_generation.tts_quick_allowed_event.set()
 
             if not app.state.SpeechPipelineManager.running_generation.quick_answer_first_chunk_ready:
+                if first_chunk_wait_start and time.time() - first_chunk_wait_start > FIRST_CHUNK_TIMEOUT:
+                    logger.warning("🖥️⌛ TTS first chunk timeout - forcing final answer")
+                    callbacks.send_final_assistant_answer(forced=True)
+                    app.state.SpeechPipelineManager.running_generation = None
+                    callbacks.tts_chunk_sent = False
+                    callbacks.reset_state()
+                    first_chunk_wait_start = None
+                    await asyncio.sleep(0.001)
+                    log_status()
+                    continue
                 await asyncio.sleep(0.001)
                 log_status()
                 continue
+            else:
+                first_chunk_wait_start = None
 
             chunk = None
             try:
@@ -497,6 +514,7 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                         callbacks.tts_chunk_sent = False
                         callbacks.reset_state()
                         tts_final_wait_start = None
+                        first_chunk_wait_start = None
 
                     await asyncio.sleep(0.001)
                     log_status()
@@ -510,6 +528,7 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                     app.state.SpeechPipelineManager.running_generation = None
                     callbacks.tts_chunk_sent = False # Reset via callbacks
                     callbacks.reset_state() # Reset connection state via callbacks
+                    first_chunk_wait_start = None
 
                 await asyncio.sleep(0.001)
                 log_status()
