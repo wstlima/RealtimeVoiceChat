@@ -340,22 +340,37 @@ function handleJSONMessage({ type, content }) {
     }
     return;
   }
-  if (type === "tts_interruption" || type === "stop_tts") {
+  if (type === "tts_interruption") {
     if (ttsWorkletNode) {
       ttsWorkletNode.port.postMessage({ type: "clear" });
     }
     isTTSPlaying = false;
-    ignoreIncomingTTS = false;
+    ignoreIncomingTTS = true;
+    console.log(
+      `ignoreIncomingTTS set to true. Reason: ${type}. Reset in ${TTS_IGNORE_TIMEOUT_MS}ms unless interrupted.`
+    );
+    scheduleTTSIgnoreReset();
     if (ttsStartTimer) {
       clearTimeout(ttsStartTimer);
       ttsStartTimer = null;
     }
-    if (ttsIgnoreTimer) {
-      clearTimeout(ttsIgnoreTimer);
-      ttsIgnoreTimer = null;
+    return;
+  }
+  if (type === "stop_tts") {
+    if (ttsWorkletNode) {
+      ttsWorkletNode.port.postMessage({ type: "clear" });
     }
-    console.log(`ignoreIncomingTTS set to false. Reason: ${type}.`);
-    if (type === "stop_tts" && socket && socket.readyState === WebSocket.OPEN) {
+    isTTSPlaying = false;
+    ignoreIncomingTTS = true;
+    console.log(
+      `ignoreIncomingTTS set to true. Reason: stop_tts. Reset in ${TTS_IGNORE_TIMEOUT_MS}ms unless interrupted.`
+    );
+    scheduleTTSIgnoreReset();
+    if (ttsStartTimer) {
+      clearTimeout(ttsStartTimer);
+      ttsStartTimer = null;
+    }
+    if (socket && socket.readyState === WebSocket.OPEN) {
       console.log("TTS playback stopped. Reason: stop_tts.");
       socket.send(JSON.stringify({ type: 'tts_stop' }));
     }
