@@ -271,22 +271,16 @@ function handleJSONMessage({ type, content }) {
     }
     return;
   }
-  if (type === "tts_interruption") {
+  if (type === "tts_interruption" || type === "stop_tts") {
     if (ttsWorkletNode) {
       ttsWorkletNode.port.postMessage({ type: "clear" });
     }
     isTTSPlaying = false;
     ignoreIncomingTTS = false;
-    return;
-  }
-  if (type === "stop_tts") {
-    if (ttsWorkletNode) {
-      ttsWorkletNode.port.postMessage({ type: "clear" });
+    if (type === "stop_tts" && socket && socket.readyState === WebSocket.OPEN) {
+      console.log("TTS playback stopped. Reason: stop_tts.");
+      socket.send(JSON.stringify({ type: 'tts_stop' }));
     }
-    isTTSPlaying = false;
-    ignoreIncomingTTS = true;
-    console.log("TTS playback stopped. Reason: tts_interruption.");
-    socket.send(JSON.stringify({ type: 'tts_stop' }));
     return;
   }
 }
