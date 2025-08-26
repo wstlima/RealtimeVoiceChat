@@ -111,6 +111,7 @@ function scheduleTTSIgnoreReset() {
         `ignoreIncomingTTS reset to false after ${TTS_IGNORE_TIMEOUT_MS}ms timeout`
       );
     }
+    ttsIgnoreTimer = null;
   }, TTS_IGNORE_TIMEOUT_MS);
 }
 
@@ -316,10 +317,17 @@ function handleJSONMessage({ type, content }) {
   }
   if (type === "tts_chunk") {
     if (ignoreIncomingTTS) {
-      console.log(
-        `Ignoring tts_chunk because ignoreIncomingTTS is true. Waiting ${TTS_IGNORE_TIMEOUT_MS}ms for tts_interruption before resetting.`
-      );
-      scheduleTTSIgnoreReset();
+      if (ttsIgnoreTimer) {
+        console.log(
+          `Ignoring tts_chunk because ignoreIncomingTTS is true. Waiting ${TTS_IGNORE_TIMEOUT_MS}ms for tts_interruption before resetting.`
+        );
+        scheduleTTSIgnoreReset();
+      } else {
+        console.log(
+          "Ignoring tts_chunk because ignoreIncomingTTS is true, but reset timer has already elapsed."
+        );
+        ignoreIncomingTTS = false;
+      }
       return;
     }
     console.log("Processing tts_chunk.");
