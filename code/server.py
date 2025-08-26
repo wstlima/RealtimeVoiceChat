@@ -191,7 +191,7 @@ def parse_json_message(text: str) -> dict:
     """
     Safely parses a JSON string into a dictionary.
 
-    Logs a warning if the JSON is invalid and returns an empty dictionary.
+    Logs a warning if the JSON is invalid or a TypeError occurs and returns an empty dictionary.
 
     Args:
         text: The JSON string to parse.
@@ -201,7 +201,7 @@ def parse_json_message(text: str) -> dict:
     """
     try:
         return json.loads(text)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, TypeError):
         logger.warning("🖥️⚠️ Ignoring client message with invalid JSON")
         return {}
 
@@ -294,6 +294,9 @@ async def process_incoming_data(ws: WebSocket, app: FastAPI, incoming_chunks: as
             elif "text" in msg and msg["text"]:
                 # Text-based message: parse JSON
                 data = parse_json_message(msg["text"])
+                if not isinstance(data, dict):
+                    logger.warning("🖥️⚠️ Ignoring non-dict JSON message from client")
+                    continue
                 msg_type = data.get("type")
                 logger.info(Colors.apply(f"🖥️📥 ←←Client: {data}").orange)
 
