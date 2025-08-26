@@ -18,6 +18,7 @@ import time
 import threading # Keep threading for SpeechPipelineManager internals and AbortWorker
 import sys
 import os # Added for environment variable access
+import re
 
 from typing import Any, Dict, Optional, Callable # Added for type hints in docstrings
 from contextlib import asynccontextmanager
@@ -883,7 +884,6 @@ class TranscriptionCallbacks:
         logger.debug(f"🖥️✅ Attempting to send final answer: '{final_answer}' (Sent previously: {self.final_assistant_answer_sent})")
 
         if not self.final_assistant_answer_sent and final_answer:
-            import re
             # Clean up the final answer text
             cleaned_answer = re.sub(r'[\r\n]+', ' ', final_answer)
             cleaned_answer = re.sub(r'\s+', ' ', cleaned_answer).strip()
