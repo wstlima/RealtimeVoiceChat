@@ -459,13 +459,19 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
                         first_chunk_wait_start = time.time()
                         logger.info("🖥️🔇 tts_to_client is False; waiting for client readiness")
                     elif time.time() - first_chunk_wait_start > FIRST_CHUNK_TIMEOUT:
-                        logger.warning("🖥️⌛ tts_to_client timeout - triggering fallback to force final answer")
+                        reason = (
+                            "tts_to_client remained False beyond FIRST_CHUNK_TIMEOUT; "
+                            "forcing final answer"
+                        )
+                        logger.warning(f"🖥️⌛ {reason}")
                         callbacks.send_final_assistant_answer(forced=True)
                         app.state.SpeechPipelineManager.running_generation = None
                         callbacks.tts_chunk_sent = False
                         callbacks.reset_state()
-                        logger.info("🖥️🧹 tts_to_client timeout fallback executed; running_generation cleared")
-                        first_chunk_wait_start = None
+                        logger.info(
+                            "🖥️🧹 tts_to_client timeout fallback executed; running_generation cleared"
+                        )
+                        first_chunk_wait_start = time.time()
                 await asyncio.sleep(0.001)
                 log_status()
                 continue
@@ -489,13 +495,18 @@ async def send_tts_chunks(app: FastAPI, message_queue: asyncio.Queue, callbacks:
 
             if not app.state.SpeechPipelineManager.running_generation.quick_answer_first_chunk_ready:
                 if first_chunk_wait_start and time.time() - first_chunk_wait_start > FIRST_CHUNK_TIMEOUT:
-                    logger.warning("🖥️⌛ TTS first chunk timeout - triggering fallback to force final answer")
+                    reason = (
+                        "no TTS chunk produced within FIRST_CHUNK_TIMEOUT; forcing final answer"
+                    )
+                    logger.warning(f"🖥️⌛ {reason}")
                     callbacks.send_final_assistant_answer(forced=True)
                     app.state.SpeechPipelineManager.running_generation = None
                     callbacks.tts_chunk_sent = False
                     callbacks.reset_state()
-                    logger.info("🖥️🧹 First chunk timeout fallback executed; running_generation cleared")
-                    first_chunk_wait_start = None
+                    logger.info(
+                        "🖥️🧹 First chunk timeout fallback executed; running_generation cleared"
+                    )
+                    first_chunk_wait_start = time.time()
                     await asyncio.sleep(0.001)
                     log_status()
                     continue
