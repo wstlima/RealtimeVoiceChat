@@ -886,7 +886,10 @@ class TranscriptionCallbacks:
                     "type": "final_assistant_answer",
                     "content": cleaned_answer
                 })
-                app.state.SpeechPipelineManager.history.append({"role": "assistant", "content": cleaned_answer})
+                self.app.state.SpeechPipelineManager.history.append({
+                    "role": "assistant",
+                    "content": cleaned_answer,
+                })
                 self.final_assistant_answer_sent = True
                 self.final_assistant_answer = cleaned_answer # Store the sent answer
             else:
