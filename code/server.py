@@ -30,8 +30,8 @@ from starlette.responses import HTMLResponse, Response, FileResponse
 
 USE_SSL = False
 LANGUAGE = "pt"
-START_ENGINE = "kokoro" # or "orpheus"
-TTS_START_ENGINE = "kokoro"
+START_ENGINE = "orpheus" # or "orpheus"
+TTS_START_ENGINE = "orpheus"
 TTS_ORPHEUS_MODEL = "orpheus-3b-0.1-ft-Q8_0-GGUF/orpheus-3b-0.1-ft-q8_0.gguf"
 
 LLM_START_PROVIDER = "ollama"

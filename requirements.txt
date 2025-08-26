@@ -12,4 +12,4 @@ python-dotenv
 # llm providers
 ollama
 openai
-ctranslate2
+ctranslate2 
